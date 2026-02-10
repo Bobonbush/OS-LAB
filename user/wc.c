@@ -33,14 +33,10 @@ wc(int fd, char *name)
     printf("wc: read error\n");
     exit(1);
   }
-   if (print_lines == 0 && print_words == 0 && print_chars == 0) {
-      printf("%d %d %d %s\n", l, w, c, name);
-  } else {
-     if(print_lines) printf("%d ", l);
-     if(print_words) printf("%d ", w);
-     if(print_chars) printf("%d ", c);
-     printf("%s\n", name);
-  }
+  if(print_lines) printf("%d ", l);
+  if(print_words) printf("%d ", w);
+  if(print_chars) printf("%d ", c);
+  printf("%s\n", name);
 }
 
 int
@@ -65,12 +61,16 @@ main(int argc, char *argv[])
     }
   }
 
+  if (!print_lines && !print_words && !print_chars) {
+    print_lines = print_words = print_chars = 1;
+  }
+
   if(i >= argc) {
     wc(0, "");
     exit(0); 
   }
 
-   for(i = index; i < argc; i++){
+  for(i = index; i < argc; i++){
     if((fd = open(argv[i], O_RDONLY)) < 0){
       printf("wc: cannot open %s\n", argv[i]);
       exit(1);

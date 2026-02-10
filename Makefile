@@ -145,10 +145,10 @@ UPROGS=\
 	$U/_logstress\
 	$U/_forphan\
 	$U/_dorphan\
-        $U/_trace\
+    $U/_trace\
 
-fs.img: mkfs/mkfs README $(UPROGS)
-	mkfs/mkfs fs.img README $(UPROGS)
+fs.img: mkfs/mkfs README test-lab01.txt $(UPROGS)
+	mkfs/mkfs fs.img README test-lab01.txt $(UPROGS)
 
 -include kernel/*.d user/*.d
 
