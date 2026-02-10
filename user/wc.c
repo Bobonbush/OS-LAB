@@ -4,6 +4,9 @@
 #include "user/user.h"
 
 char buf[512];
+int print_lines = 0;
+int print_words = 0;
+int print_chars = 0;
 
 void
 wc(int fd, char *name)
@@ -30,20 +33,44 @@ wc(int fd, char *name)
     printf("wc: read error\n");
     exit(1);
   }
-  printf("%d %d %d %s\n", l, w, c, name);
+   if (print_lines == 0 && print_words == 0 && print_chars == 0) {
+      printf("%d %d %d %s\n", l, w, c, name);
+  } else {
+     if(print_lines) printf("%d ", l);
+     if(print_words) printf("%d ", w);
+     if(print_chars) printf("%d ", c);
+     printf("%s\n", name);
+  }
 }
 
 int
 main(int argc, char *argv[])
 {
   int fd, i;
-
-  if(argc <= 1){
-    wc(0, "");
-    exit(0);
+  int index = 1;
+  for(i = 1; i < argc; i++){
+    if(argv[i][0] == '-') {
+      for(int j = 1 ; argv[i][j] != 0; j++) {
+         if(argv[i][j] == 'l')  print_lines = 1;
+         else if(argv[i][j] == 'w') print_words = 1;
+         else if(argv[i][j] == 'c') print_chars = 1;
+         else {
+            printf("wc: invalid option -- '%c' \n", argv[i][j]);
+            exit(1);
+         }
+      }
+    }else {
+        index = i;
+        break;
+    }
   }
 
-  for(i = 1; i < argc; i++){
+  if(i >= argc) {
+    wc(0, "");
+    exit(0); 
+  }
+
+   for(i = index; i < argc; i++){
     if((fd = open(argv[i], O_RDONLY)) < 0){
       printf("wc: cannot open %s\n", argv[i]);
       exit(1);
