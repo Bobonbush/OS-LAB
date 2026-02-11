@@ -8,7 +8,7 @@ char *states[] = {
   [UNUSED]    "unused",
   [USED]      "used",
   [SLEEPING]  "sleep",
-  [RUNNABLE]  "runble",
+  [RUNNABLE]  "runnable",
   [RUNNING]   "run",
   [ZOMBIE]    "zombie"
 };

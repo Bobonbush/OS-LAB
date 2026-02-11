@@ -120,12 +120,8 @@ uint64
 sys_trace(void)
 {
   int mask;
-
-  // argint(0, &mask) retrieves the 0-th argument (the first one)
-  // passed from the user program.
-  argint(0, &mask);
-
-  // Save the mask in the process structure
+  if(argint(0, &mask) < 0)
+    return -1;
   myproc()->trace_mask = mask;
   return 0;
 }

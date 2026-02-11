@@ -50,6 +50,7 @@ cat(int fd)
       else if (lines < 100) printf("    ");
       else if (lines < 1000) printf("   ");
       else if (lines < 10000) printf("  ");
+      else if (lines < 100000) printf(" ");
       printf("%d", lines);
       lines++;
       printf("  ");
