@@ -148,8 +148,8 @@ UPROGS=\
 	$U/_ps\
     $U/_trace\
 
-fs.img: mkfs/mkfs README test-lab01.txt $(UPROGS)
-	mkfs/mkfs fs.img README test-lab01.txt $(UPROGS)
+fs.img: mkfs/mkfs README domains.txt $(UPROGS)
+	mkfs/mkfs fs.img README domains.txt $(UPROGS)
 
 -include kernel/*.d user/*.d
 
