@@ -107,6 +107,15 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+uint64 
+sys_getprocs(void)
+{
+  uint64 addr;
+  argaddr(0, &addr);
+  return getprocs(addr);
+}
+
 uint64
 sys_trace(void)
 {

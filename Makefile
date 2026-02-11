@@ -145,6 +145,7 @@ UPROGS=\
 	$U/_logstress\
 	$U/_forphan\
 	$U/_dorphan\
+	$U/_ps\
     $U/_trace\
 
 fs.img: mkfs/mkfs README test-lab01.txt $(UPROGS)
