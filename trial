@@ -1,0 +1,9 @@
+
+
+struct {
+  int pa;              // Physical address of the shared page
+  int refcount;           // Reference count
+  int allocated;          // Whether the page is allocated
+} shmem_page;
+
+

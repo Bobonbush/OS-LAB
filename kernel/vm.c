@@ -7,6 +7,20 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "fs.h"
+#define SHMEM_REGION 0x4000000  // 64MB mark
+/*
+ * Shared Memory Page
+ */
+struct {
+  uint64 pa;              // Physical address of the shared page
+  int refcount;           // Reference count
+  struct spinlock lock;   // Lock to protect access
+  int allocated;          // Whether the page is allocated
+} shmem_page;
+// Define a specific region for shared memory
+
+
+
 
 /*
  * the kernel's page table.
@@ -203,6 +217,18 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
       continue;   
     if((*pte & PTE_V) == 0)  // has physical page been allocated?
       continue;
+    if(a == SHMEM_REGION) {
+      acquire(&shmem_page.lock);
+      shmem_page.refcount--;
+      if(shmem_page.refcount == 0) {
+        kfree((void*)shmem_page.pa);
+        shmem_page.pa = 0;
+        shmem_page.allocated = 0;
+      }
+      release(&shmem_page.lock);
+      *pte = 0;
+      continue;
+    }
     if(do_free){
       uint64 pa = PTE2PA(*pte);
       kfree((void*)pa);
@@ -308,6 +334,7 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
       continue;   // physical page hasn't been allocated
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
+
     if((mem = kalloc()) == 0)
       goto err;
     memmove(mem, (char*)pa, PGSIZE);
@@ -316,6 +343,21 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
       goto err;
     }
   }
+
+  if((pte = walk(old, SHMEM_REGION, 0)) != 0 && (*pte & PTE_V)) {
+    pa = PTE2PA(*pte);
+    flags = PTE_FLAGS(*pte);
+    
+    if(mappages(new, SHMEM_REGION, PGSIZE, pa, flags) != 0) {
+      goto err;
+    }
+    
+    acquire(&shmem_page.lock);
+    shmem_page.refcount++;
+    release(&shmem_page.lock);
+  }
+
+  
   return 0;
 
  err:
@@ -482,5 +524,81 @@ ismapped(pagetable_t pagetable, uint64 va)
   if (*pte & PTE_V){
     return 1;
   }
+  return 0;
+}
+
+
+
+
+
+void            
+init_shmem(void) 
+{
+  shmem_page.pa = 0;
+  shmem_page.refcount = 0;
+  initlock(&shmem_page.lock, "initLock");
+  shmem_page.allocated = 0;
+}
+
+
+uint64 
+mmap(void) 
+{
+
+  struct proc  *p = myproc();
+  acquire(&shmem_page.lock);
+  if(walkaddr(p->pagetable, SHMEM_REGION) != 0) {
+    release(&shmem_page.lock);
+    return 0; 
+  }
+  
+
+  if(shmem_page.allocated == 0) {
+    char* mem = kalloc();
+    
+    if(mem == 0) {
+      release(&shmem_page.lock);
+      return 0;
+    }
+    memset(mem, 0, PGSIZE);
+    shmem_page.allocated = 1;
+    shmem_page.pa = (uint64)mem;
+    shmem_page.refcount = 1;
+
+  } else {
+    shmem_page.refcount++;
+  }
+
+  if(mappages(p->pagetable, SHMEM_REGION, PGSIZE, shmem_page.pa, PTE_R | PTE_W | PTE_U) == -1) {
+      shmem_page.refcount--;
+      if (shmem_page.refcount == 0) {
+      kfree((void*)shmem_page.pa);
+      shmem_page.pa = 0;
+      shmem_page.allocated = 0;
+    }
+    release(&shmem_page.lock);
+    return 0;
+  }
+
+  release(&shmem_page.lock);
+  return SHMEM_REGION;
+}
+int
+munmap(uint64 va) 
+{
+  struct proc  *p = myproc();
+  
+  // Check valid address and check inside region
+  if(va != SHMEM_REGION) {
+    return -1;
+  }
+
+  pte_t * pte = walk(p->pagetable, va, 0);
+
+  if(pte == 0 || (*pte & PTE_V) == 0 ) {
+    return -1;
+  }
+
+  uvmunmap(p->pagetable, va, 1, 0);
   return 0;
 }

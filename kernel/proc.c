@@ -360,7 +360,7 @@ kexit(int status)
   p->state = ZOMBIE;
 
   release(&wait_lock);
-
+  
   // Jump into the scheduler, never to return.
   sched();
   panic("zombie exit");
