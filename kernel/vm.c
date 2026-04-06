@@ -343,8 +343,8 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
       goto err;
     }
   }
-
-  if((pte = walk(old, SHMEM_REGION, 0)) != 0 && (*pte & PTE_V)) {
+  pte = walk(old, SHMEM_REGION, 0);
+  if(pte != 0 && (*pte & PTE_V)) {
     pa = PTE2PA(*pte);
     flags = PTE_FLAGS(*pte);
     
@@ -353,6 +353,11 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     }
     
     acquire(&shmem_page.lock);
+    if(!shmem_page.allocated || shmem_page.pa != pa) {
+       release(&shmem_page.lock);
+       uvmunmap(new, SHMEM_REGION, 1, 0);
+       goto err;
+    }
     shmem_page.refcount++;
     release(&shmem_page.lock);
   }
@@ -549,7 +554,7 @@ mmap(void)
   acquire(&shmem_page.lock);
   if(walkaddr(p->pagetable, SHMEM_REGION) != 0) {
     release(&shmem_page.lock);
-    return 0; 
+    return SHMEM_REGION; 
   }
   
 
@@ -563,24 +568,24 @@ mmap(void)
     memset(mem, 0, PGSIZE);
     shmem_page.allocated = 1;
     shmem_page.pa = (uint64)mem;
-    shmem_page.refcount = 1;
+    shmem_page.refcount = 0;
 
-  } else {
-    shmem_page.refcount++;
-  }
+  } 
+  shmem_page.refcount++;
+  uint64 pa = shmem_page.pa;
+  release(&shmem_page.lock);
 
-  if(mappages(p->pagetable, SHMEM_REGION, PGSIZE, shmem_page.pa, PTE_R | PTE_W | PTE_U) == -1) {
+  if(mappages(p->pagetable, SHMEM_REGION, PGSIZE, pa, PTE_R | PTE_W | PTE_U) == -1) {
+      acquire(&shmem_page.lock);
       shmem_page.refcount--;
       if (shmem_page.refcount == 0) {
       kfree((void*)shmem_page.pa);
       shmem_page.pa = 0;
       shmem_page.allocated = 0;
-    }
-    release(&shmem_page.lock);
-    return 0;
+      }
+      release(&shmem_page.lock);
+      return 0;
   }
-
-  release(&shmem_page.lock);
   return SHMEM_REGION;
 }
 int
